@@ -1,0 +1,6 @@
+se
+sai
+eu
+
+<S> ::= e<A> | a<A> | i<A> | u<A> 
+<A> ::= e<A> | a<A> | i<A> | u<A> | ε

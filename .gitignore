@@ -5,3 +5,7 @@ Thumbs.db
 ehthumbs.db
 node_modules/
 .vs/
+.vscode/
+venv/
+env/
+outputs/
