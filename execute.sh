@@ -8,8 +8,8 @@ pip install -r requirements.txt
 
 echo "Running..."
 
-python3 src/geradorafd.py inputs/entrada.txt
-python3 src/compilador.py inputs/codigo.txt outputs/afd.csv
+python3 src/geradorafd.py ../inputs/entrada.txt
+python3 src/compilador.py ../inputs/codigo.txt outputs/afd.csv
 
 echo "Done!"
 
