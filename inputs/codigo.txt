@@ -1,0 +1,9 @@
+int eu;
+eu : 1 + 2 * 3 / 2; 
+enquanto (eu != 0) {
+    sai (aeiou);
+    eu : eu - 1;
+}
+se (eu == 0){
+    sai(aaaoi);
+}
