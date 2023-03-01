@@ -115,7 +115,16 @@ def criar_afnd():
                 afnd[estado]['*'].append(regra.split('<')[1][:-1])
             elif regra != '*':
                 afnd[estado][regra[0]].append(regra.split('<')[1][:-1])
-    
+
+
+
+def find_eps(estado_transicoes):
+    for x in estado_transicoes:
+        for y in afnd[x]['*']:
+            if y not in estado_transicoes:
+                estado_transicoes.append(y)
+    return estado_transicoes
+
 
 def eliminar_epsilon_transicoes():
     for regra in afnd:
@@ -129,14 +138,6 @@ def eliminar_epsilon_transicoes():
                         afnd[regra][simbolo].append(transicao)
         afnd[regra]['*'] = []
             
-
-
-def find_eps(estado_transicoes):
-    for x in estado_transicoes:
-        for y in afnd[x]['*']:
-            if y not in estado_transicoes:
-                estado_transicoes.append(y)
-    return estado_transicoes
     
 
 def main():
