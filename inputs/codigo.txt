@@ -1,6 +1,6 @@
-binary u.
+binary a.
 binary ae ~ 0.
-u ~ 0 + 1011 \ ua / u - 100.
+u ~ 0 + 1011 - ua + u - 100.
 if ua less 1 {
     binary uai ~ 10.
 }

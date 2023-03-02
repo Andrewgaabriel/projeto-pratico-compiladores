@@ -1,11 +1,25 @@
 import sys
 import pandas as pd
 
+# ENTRADAS
 entrada = list(open("inputs/entrada.txt"))
 codigo = list(open("inputs/codigo.txt"))
 
-simbolos, estados_finais, estados, alcancaveis, estados_vivos = [], [], [], [], []
-gramatica, afnd = {}, {}
+
+# LISTAS 
+simbolos = []
+estados_finais = []
+estados = []
+alcancaveis = []
+estados_vivos = []
+tabela_de_simbolos = []
+fita_de_saida = []
+
+# DICIONARIOS
+gramatica = {}
+afnd = {}
+
+
 gramaticapd = pd.DataFrame()
 count = 0
 
@@ -205,14 +219,14 @@ def eliminar_estados_inalcancaveis():
 
 
 def adiciona_estado_erro():
-    afnd['ERRO'] = {}
+    afnd['ERR'] = {}
     for s in simbolos:
-        afnd['ERRO'][s] = []
-    afnd['ERRO']['*'] = []
+        afnd['ERR'][s] = []
+    afnd['ERR']['*'] = []
     for regra in afnd:
         for s in simbolos:
             if not afnd[regra][s]:
-                afnd[regra][s] = ['ERRO']
+                afnd[regra][s] = ['ERR']
                 
                 
                 
@@ -236,7 +250,7 @@ def elimina_mortos():
     buscar_vivos()
     dead = []
     for regra in afnd:
-        if regra not in estados_vivos and regra != 'ERRO':
+        if regra not in estados_vivos and regra != 'ERR':
             dead.append(regra)
     
     for regra in dead:
@@ -247,7 +261,107 @@ def print_af():
     dataframe = pd.DataFrame(afnd)
     dataframe = dataframe.T
     print(dataframe)
+    
+
+def analise_lexica():
+    separadores = [' ', '\n', '\t', '+', '-', '{', '}', '~', '.', ''],
+    espacos = [' ', '\n', '\t', '']    
+    operacoes = ['+', '-', '~', '.']
+    # + -> soma
+    # - -> subtração
+    # ~ -> atribuição
+    # . -> fim de sentença    
+    count = 0
+    #print(estados_finais)
+    #print(simbolos)
+    for nro_linha, linha in enumerate(codigo):  # Percorre as linhas do código de entrada
+        #print('Linha: ', nro_linha)
+        #print('Conteúdo: ', linha)
+        estado = 'S'                                    # Estado inicial
+        string = ''                                     # String que será reconhecida
+        for char in linha:                              # Percorre os caracteres da linha
+            #print('Caracter: ', char)
+            #print('String: ', string)
+            if char in operacoes and string:            # Se o caracter for uma OPERAÇÃO e a string não estiver vazia
+                if string[-1] not in operacoes:         # Se o último caracter da string não for uma OPERAÇÃO
+                    if estado in estados_finais:        # Se o estado atual for final
+                        fita_de_saida.append(estado)    # Adiciona o estado atual na fita de saída
+                        tabela_de_simbolos.append({'Linha': nro_linha, 'Estado': estado, 'Conteudo': string}) # Adiciona na tabela de símbolos
+                    else:                               # Se o estado atual não for final então é um ERRO
+                        fita_de_saida.append('ERRO')    # Adiciona o estado ERRO na fita de saída
+                        tabela_de_simbolos.append({'Linha': nro_linha, 'Estado': 'ERRO', 'Conteudo': string}) # Adiciona na tabela de símbolos
+                    estado = afnd['S'][char][0] # Estado atual recebe o próximo estado 
+                    string = char              # String recebe o caracter atual
+                    count += 1
+                else:                              # Se o último caracter da string for uma OPERAÇÃO
+                    string += char                  # Adiciona o caracter atual na string
+                    if char not in simbolos:        # Se o caracter atual não for um símbolo
+                        estado = 'ERR'                     # Estado atual recebe o estado de erro
+                    else:                       # Se o caracter atual for um símbolo
+                        estado = afnd[estado][char][0]  # Estado atual recebe o próximo estado
+            elif char == ' ' and string:        # Se o caracter for um ESPAÇO e a string não estiver vazia
+                if estado in estados_finais:    # Se o estado atual for final
+                    fita_de_saida.append(estado) # Adiciona o estado atual na fita de saída >RECONHECIDO<
+                    tabela_de_simbolos.append({'Linha': nro_linha, 'Estado': estado, 'Conteudo': string}) # Adiciona na tabela de símbolos
+                else:                           # Se o estado atual não for final então é um ERRO
+                    fita_de_saida.append('ERRO') # Adiciona o estado ERRO na fita de saída >ERRO<
+                    tabela_de_simbolos.append({'Linha': nro_linha, 'Estado': 'ERRO', 'Conteudo': string}) # Adiciona na tabela de símbolos
+                estado = 'S'                    # Estado atual recebe o estado inicial
+                string = ''                     # String recebe vazio
+                count += 1
+            elif char in separadores and string: # Se o caracter for um SEPARADOR e a string não estiver vazia
+                if estado in estados_finais:    # Se o estado atual for final
+                    fita_de_saida.append(estado) # Adiciona o estado atual na fita de saída >RECONHECIDO<
+                    tabela_de_simbolos.append({'Linha': nro_linha, 'Estado': estado, 'Conteudo': string}) # Adiciona na tabela de símbolos
+                else:                           # Se o estado atual não for final então é um ERRO
+                    fita_de_saida.append('ERRO') # Adiciona o estado ERRO na fita de saída >ERRO<
+                    tabela_de_simbolos.append({'Linha': nro_linha, 'Estado': 'ERRO', 'Conteudo': string}) # Adiciona na tabela de símbolos
+                estado = 'S'                    # Estado atual recebe o estado inicial
+                string = ''                     # String recebe vazio
+                count += 1
+            else: # por fim, se o caracter não for uma OPERAÇÃO ou um SEPARADOR (ele é um caractere comum)
+                if char in espacos:
+                    continue
+                if char not in separadores and char not in operacoes and string: # Se o caracter não for um SEPARADOR e não for um OPERADOR e a string não estiver vazia
+                    if string[-1] in operacoes:
+                        if estado in estados_finais:
+                            fita_de_saida.append(estado)
+                            tabela_de_simbolos.append({'Linha': nro_linha, 'Estado': estado, 'Conteudo': string})
+                        else: # deu erro
+                            fita_de_saida.append('ERRO')
+                            tabela_de_simbolos.append({'Linha': nro_linha, 'Estado': 'ERRO', 'Conteudo': string})
+                        estado = 'S' # volta pro estado inicial
+                        string = '' # limpa a string
+                        count += 1
+                string += char # adiciona o caracter atual na string
+                if char not in simbolos:
+                    estado = 'ERR'
+                else:
+                    estado = afnd[estado][char][0]
+    tabela_de_simbolos.append({'Linha': nro_linha, 'Estado': 'EOF', 'Conteudo': ''})
+    fita_de_saida.append('EOF')
+    erros = False
+    for linha in tabela_de_simbolos:
+        if linha['Estado'] == 'ERRO':
+            erros = True
+            print('Erro léxico encontrado: Linha {}, Sentença "{}" não reconhecida'.format(linha['Linha']+1, linha['Conteudo']))
+    
+    print('Fita de saída: ', fita_de_saida)
+    for i in tabela_de_simbolos:
+        print(i)
+    if erros:
+        exit()
+                    
+                    
+
+                        
+                        
                 
+                
+                
+                
+                
+    
 
 def main():
     gramatica['S'] = []
@@ -282,6 +396,13 @@ def main():
     
     print('------------ELIMINOU MORTOS------------')
     print_af()
+    
+    print("\n"* 60)
+    print('------------ANALISE LEXICA------------')
+    
+    
+    analise_lexica()
+    
     
     afd = pd.DataFrame(afnd)
     afd = afd.T
