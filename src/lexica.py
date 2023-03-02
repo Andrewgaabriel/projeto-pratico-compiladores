@@ -4,7 +4,7 @@ import pandas as pd
 entrada = list(open("inputs/entrada.txt"))
 codigo = list(open("inputs/codigo.txt"))
 
-simbolos, estados_finais, estados = [], [], []
+simbolos, estados_finais, estados, alcancaveis, estados_vivos = [], [], [], [], []
 gramatica, afnd = {}, {}
 gramaticapd = pd.DataFrame()
 count = 0
@@ -151,16 +151,16 @@ def determinizacao():
                         for aux in state.split(':'):
                             if aux not in new:
                                 new.append(aux)
-                        else:
-                            if state not in new:
-                                new.append(state)
-                    if new:
-                        new = sorted(new)
-                        new = ':'.join(new)
+                    else:
+                        if state not in new:
+                            new.append(state)
+                if new:
+                    new = sorted(new)
+                    new = ':'.join(new)
 
-                    if new and new not in newEstado and new not in list(afnd.keys()):
-                        newEstado.append(new)
-                    afnd[regra][derivacao] = new.split()
+                if new and new not in newEstado and new not in list(afnd.keys()):
+                    newEstado.append(new)
+                afnd[regra][derivacao] = new.split()
     if newEstado:
         novoEstado(newEstado)
 
@@ -179,26 +179,117 @@ def novoEstado(newState):
             if x in estados_finais and round not in estados_finais:
                 estados_finais.append(round)
             for simbolo in simbolos:
-                for transicao in afnd[x][simbolos]:
+                for transicao in afnd[x][simbolo]:
                     if not afnd[round][simbolo].__contains__(transicao):
                         afnd[round][simbolo].append(transicao)
-                    
+    determinizacao()
+    
+    
+def find_alcancaveis(estado):
+    if estado not in alcancaveis:
+        alcancaveis.append(estado)
+        for s in afnd[estado]:
+            if afnd[estado][s] \
+                    and afnd[estado][s][0] not in alcancaveis:
+                find_alcancaveis(afnd[estado][s][0])  
 
 
+def eliminar_estados_inalcancaveis():
+    find_alcancaveis('S')
+    aux = {}
+    aux.update(afnd)
+    for regra in aux:
+        if regra not in alcancaveis:
+            del afnd[regra]
+
+
+
+def adiciona_estado_erro():
+    afnd['ERRO'] = {}
+    for s in simbolos:
+        afnd['ERRO'][s] = []
+    afnd['ERRO']['*'] = []
+    for regra in afnd:
+        for s in simbolos:
+            if not afnd[regra][s]:
+                afnd[regra][s] = ['ERRO']
+                
+                
+                
+                
+                
+def buscar_vivos():
+    change = False
+    
+    for regra in afnd:
+        for s in afnd[regra]:
+            if afnd[regra][s][0] in estados_vivos and regra not in estados_vivos:
+                estados_vivos.append(regra)
+                change = True
+    if change:
+        buscar_vivos()
+                
+                
+                
+def elimina_mortos():
+    estados_vivos.extend(estados_finais)
+    buscar_vivos()
+    dead = []
+    for regra in afnd:
+        if regra not in estados_vivos and regra != 'ERRO':
+            dead.append(regra)
+    
+    for regra in dead:
+        del afnd[regra]
+    
+    
+def print_af():
+    dataframe = pd.DataFrame(afnd)
+    dataframe = dataframe.T
+    print(dataframe)
+                
 
 def main():
     gramatica['S'] = []
     tratar_entrada(entrada)
-    criar_afnd()
-    dataframe = pd.DataFrame(afnd)
-    dataframe = dataframe.T
-    print(dataframe)
-    eliminar_epsilon_transicoes()
-    print('------------------------')
-    dataframe = pd.DataFrame(afnd)
-    dataframe = dataframe.T
-    print(dataframe)
     
-
+    criar_afnd()
+    
+    print('----------AFND CRIADO--------------')    
+    print_af()
+    
+    eliminar_epsilon_transicoes()
+    
+    print('----------EPSILON TRANSICOES ELIMINADAS--------------')
+    print_af()
+    
+    determinizacao()
+    
+    print('------------DETERMINIZADO------------')
+    print_af()
+    
+    eliminar_estados_inalcancaveis()
+    
+    print('------------ELIMINOU INALCANCAVEIS------------')
+    print_af()
+    
+    adiciona_estado_erro()
+    
+    print('------------ADICIONOU ESTADO DE ERRO------------')
+    print_af()
+    
+    elimina_mortos() 
+    
+    print('------------ELIMINOU MORTOS------------')
+    print_af()
+    
+    afd = pd.DataFrame(afnd)
+    afd = afd.T
+    afd.to_csv('outputs/afd.csv', index=True, header=True)
+    
+    
 if __name__ == '__main__':
     main()
+    # TODO:
+    # 1. Finalizar a implementação do analisador léxico
+    # 2. Implementar o analisador sintático (em outro arquivo)
