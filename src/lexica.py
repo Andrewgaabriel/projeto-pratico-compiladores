@@ -410,6 +410,7 @@ def main():
     
     
 if __name__ == '__main__':
+    import sintatico
     main()
     # TODO:
     # 1. Finalizar a implementação do analisador léxico
