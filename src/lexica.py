@@ -2,6 +2,7 @@ import sys
 import pandas as pd
 
 entrada = list(open("inputs/entrada.txt"))
+codigo = list(open("inputs/codigo.txt"))
 
 simbolos, estados_finais, estados = [], [], []
 gramatica, afnd = {}, {}
@@ -106,15 +107,15 @@ def criar_afnd():
         
     """ Adiciona as transições no AFND """
     for estado in gramatica:
-        for regra in gramatica[estado]:
-            if len(regra) == 1 and regra.islower() and estado not in estados_finais:
+        for derivacao in gramatica[estado]:
+            if len(derivacao) == 1 and derivacao.islower() and estado not in estados_finais:
                 estados_finais.append(estado)
-            elif regra == '*' and estado not in estados_finais:
+            elif derivacao == '*' and estado not in estados_finais:
                 estados_finais.append(estado)
-            elif regra[0] == '<':
-                afnd[estado]['*'].append(regra.split('<')[1][:-1])
-            elif regra != '*':
-                afnd[estado][regra[0]].append(regra.split('<')[1][:-1])
+            elif derivacao[0] == '<':
+                afnd[estado]['*'].append(derivacao.split('<')[1][:-1])
+            elif derivacao != '*':
+                afnd[estado][derivacao[0]].append(derivacao.split('<')[1][:-1])
 
 
 
@@ -129,16 +130,61 @@ def find_eps(estado_transicoes):
 def eliminar_epsilon_transicoes():
     for regra in afnd:
         et_set = find_eps(afnd[regra]['*'])
-        for estado in et_set:
-            if estado in estados_finais:
+        for state in et_set:
+            if state in estados_finais:
                 estados_finais.append(regra)
-            for simbolo in afnd[estado]:
-                for transicao in afnd[estado][simbolo]:
+            for simbolo in afnd[state]:
+                for transicao in afnd[state][simbolo]:
                     if transicao not in afnd[regra][simbolo]:
                         afnd[regra][simbolo].append(transicao)
         afnd[regra]['*'] = []
             
     
+def determinizacao():
+    newEstado = []
+    for regra in afnd:
+        for derivacao in afnd[regra]:
+            if len(afnd[regra][derivacao]) > 1:
+                new = []
+                for state in afnd[regra][derivacao]:
+                    if ':' in state:
+                        for aux in state.split(':'):
+                            if aux not in new:
+                                new.append(aux)
+                        else:
+                            if state not in new:
+                                new.append(state)
+                    if new:
+                        new = sorted(new)
+                        new = ':'.join(new)
+
+                    if new and new not in newEstado and new not in list(afnd.keys()):
+                        newEstado.append(new)
+                    afnd[regra][derivacao] = new.split()
+    if newEstado:
+        novoEstado(newEstado)
+
+
+def novoEstado(newState):
+    for x in newState:
+        afnd[x] = {}
+        estados.append(x)
+        for y in simbolos:
+            afnd[x][y] = []
+        afnd[x]['*'] = []
+    
+    for round in newState:
+        agroup = sorted(round.split(':'))
+        for x in agroup:
+            if x in estados_finais and round not in estados_finais:
+                estados_finais.append(round)
+            for simbolo in simbolos:
+                for transicao in afnd[x][simbolos]:
+                    if not afnd[round][simbolo].__contains__(transicao):
+                        afnd[round][simbolo].append(transicao)
+                    
+
+
 
 def main():
     gramatica['S'] = []

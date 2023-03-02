@@ -1,9 +1,12 @@
-int eu;
-eu : 1 + 2 * 3 / 2; 
-enquanto (eu != 0) {
-    sai (aeiou);
-    eu : eu - 1;
+binary u.
+binary ae ~ 0.
+u ~ 0 + 1011 \ ua / u - 100.
+if ua less 1 {
+    binary uai ~ 10.
 }
-se (eu == 0){
-    sai(aaaoi);
+while ae greater 100 {
+    binary uaio ~ 1001.
+    if 1001 less 1000 {
+        u ~ 1111.
+    }
 }
