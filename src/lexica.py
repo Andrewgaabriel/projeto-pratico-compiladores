@@ -1,10 +1,13 @@
 import sys
 import pandas as pd
+import xml.etree.ElementTree as ET
 
 # ENTRADAS
-entrada = list(open("../inputs/entrada.txt"))
-codigo = list(open("../inputs/codigo.txt"))
+entrada = list(open("inputs/entrada.txt"))
+codigo = list(open("inputs/codigo.txt"))
 
+parsing = ET.parse('inputs/GoldParser.xml')
+root = parsing.getroot()
 
 # LISTAS 
 simbolos = []
@@ -14,10 +17,21 @@ alcancaveis = []
 estados_vivos = []
 tabela_de_simbolos = []
 fita_de_saida = []
+fita_de_saida_corrigida = []
+escopo = []
+
+
+
+redux_simbolos = []
+simbolos_sintatico = []
+producoes = []
+tabela_lalr = []
+pilha = []
 
 # DICIONARIOS
 gramatica = {}
 afnd = {}
+indexSimboloRedux = {}
 
 
 gramaticapd = pd.DataFrame()
@@ -345,19 +359,129 @@ def analise_lexica():
         if linha['Estado'] == 'ERRO':
             erros = True
             print('Erro léxico encontrado: Linha {}, Sentença "{}" não reconhecida'.format(linha['Linha']+1, linha['Conteudo']))
-    
-    print('Fita de saída: ', fita_de_saida)
-    for i in tabela_de_simbolos:
-        print(i)
     if erros:
         exit()
                     
                     
+def carrega_da_tabela():
+    
+    xml_simbolos = root.iter('Symbol') # Carrega os símbolos da tabela
+    for simbolo in xml_simbolos:
+        simbolos_sintatico.append({
+            'Index': simbolo.attrib['Index'],
+            'Name': simbolo.attrib['Name'],
+            'Type': simbolo.attrib['Type']
+        })
+    
+    xml_producoes = root.iter('Production') # Carrega as produções da tabela
+    for producao in xml_producoes:
+        producoes.append({
+            'NonTerminalIndex': producao.attrib['NonTerminalIndex'],
+            'SymbolCount': producao.attrib['SymbolCount']
+        })
 
+    estados_tabela_lalr = root.iter('LALRState') # Carrega os estados da tabela LALR
+    for estado in estados_tabela_lalr:
+        tabela_lalr.append({}) # Adiciona um novo estado vazio (por ora) na tabela LALR
+        for acao in estado:
+            tabela_lalr[int(estado.attrib['Index'])][str(acao.attrib['SymbolIndex'])] = {
+                'Action': acao.attrib['Action'],
+                'Value': acao.attrib['Value']
+            }
+    
                         
                         
+def corrige_ts(simbolos):
+    indexes = {}
+    for index, simbolo in enumerate(simbolos):
+        indexes[simbolo['Name']] = str(index)
+        indexSimboloRedux[str(index)] = simbolo['Name']
+    for aux in fita_de_saida:
+        if aux == 'S1' or aux == 'WHILE1:S1' or aux == 'SAME1:S1':
+            aux = 'VAR'
+        elif aux == 'S2':
+            aux = 'NUM'
+        elif aux == '$':
+            aux = 'EOF'
+        fita_de_saida_corrigida.append(aux)
+        
+    for linha in tabela_de_simbolos:
+        if linha['Estado'] == 'S1' or linha['Estado'] == 'WHILE1:S1' or linha['Estado'] == 'SAME1:S1':
+            linha['Estado'] = 'VAR'
+        elif linha['Estado'] == 'S2':
+            linha['Estado'] = 'NUM'
+        elif linha['Estado'] == '$':
+            linha['Estado'] = 'EOF'
+        
+def faz_analise_sintatica():
+    index = 0
+    
+    while True:
+        last = fita_de_saida_corrigida[0]
+
+        try:
+            acao = tabela_lalr[int(pilha[0])][last]
+        except:
+            print('Erro sintático: Linha {}, Sentença "{}" não reconhecida'.format(tabela_de_simbolos[index]['Linha']+1, tabela_de_simbolos[index]['Conteudo']))
+            exit()
+            break
+        
+        if acao['Action'] == '1': # Equivale a SHIFT
+            pilha.insert(0, fita_de_saida_corrigida.pop(0))
+            pilha.insert(0, acao['Value'])
+            index += 1
+        
+        elif acao['Action'] == '2': # Equivale a REDUCE
+            lenght = producoes[int(acao['Value'])]['SymbolCount'] * 2 # Quantidade de símbolos da produção * 2 (porque cada símbolo é representado por um estado e um símbolo)
+            while lenght: # Enquanto a quantidade de símbolos da produção não for 0
+                pilha.pop(0)
+                lenght -= 1
+            redux_simbolos.append(producoes[int(acao['Value'])]['NonTerminalIndex']) # Adiciona o símbolo reduzido na lista de símbolos reduzidos
+            pilha.insert(0, indexSimboloRedux[producoes[int(acao['Value'])]['NonTerminalIndex']]) # Adiciona o símbolo reduzido na pilha
+            pilha.insert(0, tabela_lalr[int(pilha[1])][pilha[0]]['Value']) # Adiciona o estado da tabela LALR na pilha
+        
+        elif acao['Action'] == '3': # Equivale a ACCEPT
+            print('Salto')
+        
+        elif acao['Action'] == '4': # Equivale a ERROR
+            break
+        
+def captura():
+    aux = [1]
+    id = 1
+    for simbolo in redux_simbolos:
+        if indexSimboloRedux[simbolo] == 'CONDS':
+            id+=1
+            aux.insert(0, id)
+        elif indexSimboloRedux[simbolo] == 'REP' or indexSimboloRedux[simbolo]  == 'COND':
+            aux.pop(0)
+        elif indexSimboloRedux[simbolo] == 'RVAR':
+            escopo.append(aux[0])
+
+
+def completa_tabela_de_simbolos():
+    for token in tabela_de_simbolos:
+        if token['Estado'] == 'VAR':
+            token['Scope'] = escopo.pop(0)
+        
+        
+            
+        
+                        
                 
-                
+def analise_sintatica():
+    carrega_da_tabela() # Carrega a tabela LALR e suas informações
+    corrige_ts(simbolos_sintatico) # Corrige a tabela de símbolos substituindo os estados pelos símbolos corretos
+    # print('tabela de simbolos: ', tabela_de_simbolos)
+    # print('fita de saida: ', fita_de_saida)
+    # print('fita: ', fita_de_saida_corrigida)
+    # print('tabela lalr: ', tabela_lalr)
+    # print('producoes: ', producoes)
+    # print('simbolos: ', simbolos_sintatico)
+    
+    faz_analise_sintatica()
+    captura()
+    completa_tabela_de_simbolos()
                 
                 
                 
@@ -403,15 +527,10 @@ def main():
     
     analise_lexica()
     
+    print('------------FIM DA ANALISE LEXICA------------')
     
-    afd = pd.DataFrame(afnd)
-    afd = afd.T
-    afd.to_csv('outputs/afd.csv', index=True, header=True)
-    
+    analise_sintatica()
     
 if __name__ == '__main__':
-    import sintatico
     main()
-    # TODO:
-    # 1. Finalizar a implementação do analisador léxico
-    # 2. Implementar o analisador sintático (em outro arquivo)
+
