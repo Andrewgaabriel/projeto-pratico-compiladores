@@ -2,8 +2,8 @@ import sys
 import pandas as pd
 
 # ENTRADAS
-entrada = list(open("inputs/entrada.txt"))
-codigo = list(open("inputs/codigo.txt"))
+entrada = list(open("../inputs/entrada.txt"))
+codigo = list(open("../inputs/codigo.txt"))
 
 
 # LISTAS 
