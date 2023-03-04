@@ -294,7 +294,7 @@ def analise_lexica():
                     else:
                         tabela_de_simbolos.append({'Line': idx, 'State': 'Error', 'Label': string})
                         fitaSaida.append('Error')
-                    E = tabela['S'][char][0] # Estado atual recebe o próximo estado                         
+                    E = tabela['S'][char][0] # Estado atual recebe o próximo estado - TRANSIÇÃO                 
                     string = char
                     id += 1
                 else:                                                         
@@ -302,21 +302,21 @@ def analise_lexica():
                     if char not in simbolos:
                         E = '€'
                     else:
-                        E = tabela[E][char][0]
-            elif char in separadores and string:
+                        E = tabela[E][char][0] # Estado atual recebe o próximo estado - TRANSIÇÃO
+            elif char in separadores and string: # Se o caractere for um separador e a string não estiver vazia
                 if E in finais:
                     tabela_de_simbolos.append({'Line': idx, 'State': E, 'Label': string})
                     fitaSaida.append(E)
                 else:
                     tabela_de_simbolos.append({'Line': idx, 'State': 'Error', 'Label': string})
                     fitaSaida.append('Error')
-                E = 'S'
+                E = 'S' # Estado atual recebe o estado inicial - TRANSIÇÃO
                 string = ''
                 id += 1
-            else:
-                if char in espacadores:
+            else: # Se o caractere não for um operador ou separador
+                if char in espacadores: # Se o caractere for um espaço, tabulação ou quebra de linha,
                     continue
-                if char not in separadores and char not in operadores and string:
+                if char not in separadores and char not in operadores and string: # Se o caractere não for um separador ou operador ou espacador e a string não estiver vazia
                     if string[-1] in operadores:
                         if E in finais:                                             
                             tabela_de_simbolos.append({'Line': idx, 'State': E, 'Label': string})
@@ -324,16 +324,18 @@ def analise_lexica():
                         else:
                             tabela_de_simbolos.append({'Line': idx, 'State': 'Error', 'Label': string})
                             fitaSaida.append('Error')
-                        E = 'S'
+                        E = 'S' # Estado atual recebe o estado inicial - TRANSIÇÃO
                         string = ''
                         id += 1
                 string += char
                 if char not in simbolos:
                     E = '€'
                 else:
-                    E = tabela[E][char][0]
+                    E = tabela[E][char][0] # Estado atual recebe o próximo estado - TRANSIÇÃO
     tabela_de_simbolos.append({'Line': idx, 'State': 'EOF', 'Label': ''})
     fitaSaida.append('EOF')
+    
+    """ VERIFICAR SE A TABELA DE SÍMBOLOS TEM ERROS """
     erro = False
     for linha in tabela_de_simbolos:
         if linha['State'] == 'Error':
@@ -344,7 +346,8 @@ def analise_lexica():
 
 
 def corrige_tabela_de_simbolos(symbols):
-    symbols_indexes = {}    # faz um "corrige_tabela_de_simbolos reverso" { 'SymbolName': 'SymbolIndex' }
+    """ Remapeia os símbolos da tabela de símbolos para adequar ao formato da tabela de símbolos do LALR """
+    symbols_indexes = {}  
     for index, symbol in enumerate(symbols):
         symbols_indexes[symbol['Name']] = str(index)
         idxSymbolRedux[str(index)] = symbol['Name']
@@ -367,6 +370,7 @@ def corrige_tabela_de_simbolos(symbols):
 
 
 def carrega_da_tabela():
+    """ Carrega as informações da tabela LALR do arquivo XML para as variáveis globais """
     xml_symbols = root.iter('Symbol')
     for symbol in xml_symbols:
         symbols.append({
@@ -395,30 +399,32 @@ def carrega_da_tabela():
             
 def faz_analise_sintatica():
     idx = 0
-    while True:
-        ultimo_fita = fita[0]
+    while True: # Enquanto a fita não estiver vazia
+        ultimo_fita = fita[0] # Último símbolo da fita (i.e o próximo a ser lido)
         try:
-            action = lalr_table[int(pilha[0])][ultimo_fita]
+            action = lalr_table[int(pilha[0])][ultimo_fita] # Ação a ser tomada de acordo com a tabela LALR, se não existir, erro sintático
         except:
             print('Erro sintático: linha {}, sentença "{}" não reconhecida!'.format(tabela_de_simbolos[idx]['Line']+1, tabela_de_simbolos[idx]['Label']))
             exit()
             break
 
-        if action['Action'] == '1':
+        if action['Action'] == '1': # Empilhamento ou shift
             pilha.insert(0, fita.pop(0))
             pilha.insert(0, action['Value'])
             idx += 1
-        elif action['Action'] == '2':
-            size = productions[int(action['Value'])]['SymbolCount'] * 2
-            while size:
+        elif action['Action'] == '2': # Redução
+            size = productions[int(action['Value'])]['SymbolCount'] * 2 # Recupera o número de símbolos da produção
+            while size: # Desempilha os símbolos da produção
                 pilha.pop(0)
                 size -= 1
             redux_symbol.append(productions[int(action['Value'])]['NonTerminalIndex'])
             pilha.insert(0, productions[int(action['Value'])]['NonTerminalIndex'])
             pilha.insert(0, lalr_table[int(pilha[1])][pilha[0]]['Value'])
-        elif action['Action'] == '3':
+        elif action['Action'] == '3':  
             print('salto')
-        elif action['Action'] == '4':
+            # Mude para o próximo estado indicado na célula correspondente do símbolo não-terminal
+            # pilha.insert(0, lalr_table[int(pilha[0])][action['Value']]['Value'])
+        elif action['Action'] == '4': # Aceita
             break
         
         
