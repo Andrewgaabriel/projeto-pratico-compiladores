@@ -1,12 +1,6 @@
-binary a.
-binary ae ~ .
-u ~ 0 + 1011 - ua + u - 100.
-if ae less 1 {
-    binary uai ~ 10.
-}
-while ae greater 100 {
-    binary uaio ~ 1001.
-    if 1001 less 1000 {
-        a ~ 1111.
-    }
+bin a.
+bin ae ~ 0.
+a ~ 0 + 1011 \ ae / a - 100.
+se ae menor 1 {
+    bin aei ~ 10.
 }

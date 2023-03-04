@@ -2,15 +2,17 @@
 <A> ::= *
 <S> ::= 0<S> | 1<S> | <A>
 <A> ::= *
-binary
-if
-while
-same
-less
-greater
 ~
 +
 -
+\
+/
 {
 }
 .
+bin
+se
+enquanto
+igual
+menor
+maior
